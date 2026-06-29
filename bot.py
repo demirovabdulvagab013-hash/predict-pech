@@ -1,71 +1,33 @@
-# bot.py
-import telebot
-from predictor import predict_match
-from api_helpers import get_match_data
-
-# Use environment variables (set in Render)
+import asyncio
 import os
+from aiogram import Bot, Dispatcher, types
+from aiogram.filters import Command
 
-TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+TOKEN = os.getenv("BOT_TOKEN")
+CHAT_ID = os.getenv("CHAT_ID")
 
-bot = telebot.TeleBot(TELEGRAM_BOT_TOKEN)
+bot = Bot(token=TOKEN)
+dp = Dispatcher()
 
-@bot.message_handler(commands=['start'])
-def send_welcome(message):
-    bot.reply_to(message, "⚽ Bot is running! Send a match ID.")
+@dp.message(Command("start"))
+async def start_cmd(message: types.Message):
+    await message.answer("Привет! Бот работает. Напиши /test")
 
-@bot.message_handler(func=lambda m: True)
-def handle_message(message):
+@dp.message(Command("test"))
+async def test_cmd(message: types.Message):
     try:
-        match_id = int(message.text.strip())
-        match_data = get_match_data(match_id)
-        if not match_data:
-            bot.reply_to(message, "❌ Match not found.")
-            return
-
-        # Simulate team strengths
-        s_home = 9.24
-        s_away = 6.81
-        delta = s_home - s_away
-        probs = predict_match(delta)
-
-        result = "\n".join([f"{k}: {v:.2%}" for k, v in probs.items()])
-        bot.reply_to(message, f"Prediction:\n{result}")
-
+        await bot.send_message(chat_id=CHAT_ID, text="✅ Канал работает!")
+        await message.answer("Сообщение отправлено в канал!")
     except Exception as e:
-        bot.reply_to(message, "⚠️ Error processing request.")
-        print("Error:", str(e))
+        await message.answer(f"Ошибка: {e}")
 
-print("🚀 Bot is running...")
-bot.infinity_polling()
+@dp.message()
+async def echo_all(message: types.Message):
+    await message.answer("Я отвечаю только на /start и /test")
 
-import telebot
-from config import TELEGRAM_BOT_TOKEN
-from predictor import predict_match
-from api_helpers import get_match_data
+async def main():
+    print("Бот запущен...")
+    await dp.start_polling(bot)
 
-bot = telebot.TeleBot(TELEGRAM_BOT_TOKEN)
-
-@bot.message_handler(commands=['start'])
-def start(message):
-    bot.reply_to(message, "Welcome to the Football Match Predictor Bot!\nSend me a match ID to get predictions.")
-
-@bot.message_handler(func=lambda m: True)
-def handle_message(message):
-    try:
-        match_id = int(message.text.strip())
-        match = get_match_data(match_id)
-        if not match:
-            bot.reply_to(message, "Invalid match ID.")
-            return
-
-        home = match['teams']['home']['name']
-        away = match['teams']['away']['name']
-
-        # Simulate strength
-        s_home = 9.24
-        s_away = 6.81
-        delta = s_home - s_away
-        probs = predict_match(delta)
-
-        response = f"Prediction for {home} vs {away}
+if __name__ == "__main__":
+    asyncio.run(main())
